@@ -2,26 +2,206 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.5rem;
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+/* Auth — dark premium dev-tool theme, electric blue accent */
+.auth-theme {
+  --auth-bg: 222 47% 6%;
+  --auth-surface: 222 40% 9%;
+  --auth-surface-elevated: 222 35% 12%;
+  --auth-border: 222 25% 18%;
+  --auth-fg: 210 40% 96%;
+  --auth-muted: 215 16% 58%;
+  --auth-accent: 217 91% 60%;
+  --auth-accent-fg: 222 47% 6%;
+  --auth-accent-glow: 217 91% 60%;
+  --destructive: 0 72% 51%;
+  color: hsl(var(--auth-fg));
+  background-color: hsl(var(--auth-bg));
+}
+
+.auth-geometric-bg {
+  background-color: hsl(var(--auth-surface));
+  background-image:
+    linear-gradient(hsl(var(--auth-accent) / 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--auth-accent) / 0.06) 1px, transparent 1px),
+    linear-gradient(
+      135deg,
+      transparent 0%,
+      transparent 40%,
+      hsl(var(--auth-accent) / 0.04) 40%,
+      hsl(var(--auth-accent) / 0.04) 41%,
+      transparent 41%
+    );
+  background-size: 40px 40px, 40px 40px, 100% 100%;
+}
+
+.auth-shape-accent {
+  position: absolute;
+  border: 1px solid hsl(var(--auth-accent) / 0.25);
+  background: hsl(var(--auth-accent) / 0.04);
+}
+
+.auth-fade-up {
+  animation: auth-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.auth-slide-down {
+  animation: auth-slide-down 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes auth-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes auth-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@layer components {
+  .auth-input {
+    @apply h-11 w-full rounded-lg border border-[hsl(var(--auth-border))] bg-[hsl(var(--auth-surface-elevated))] px-3 text-sm text-[hsl(var(--auth-fg))] shadow-sm transition-colors placeholder:text-[hsl(var(--auth-muted))];
+  }
+
+  .auth-input:focus-visible {
+    @apply outline-none ring-2 ring-[hsl(var(--auth-accent)/0.35)] border-[hsl(var(--auth-accent)/0.6)];
+  }
+
+  .auth-label {
+    @apply text-sm font-medium text-[hsl(var(--auth-fg)/0.9)];
+  }
+
+  .auth-submit {
+    @apply inline-flex h-11 w-full items-center justify-center rounded-lg bg-[hsl(var(--auth-accent))] text-sm font-semibold text-[hsl(var(--auth-accent-fg))] shadow-[0_0_24px_-4px_hsl(var(--auth-accent-glow)/0.5)] transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--auth-accent)/0.5)] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--auth-bg))] disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .auth-link {
+    @apply font-medium text-[hsl(var(--auth-accent))] underline-offset-4 transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--auth-accent)/0.5)] rounded-sm;
+  }
+
+  .auth-field-error {
+    @apply text-xs text-[hsl(var(--destructive))] auth-slide-down;
+  }
+}
+
+/* Superadmin dashboard — terminal aesthetic, electric cyan accent */
+.admin-theme {
+  --admin-bg: 240 5% 6%;
+  --admin-surface: 240 4% 10%;
+  --admin-card: 240 4% 12%;
+  --admin-border: 240 4% 18%;
+  --admin-fg: 210 20% 96%;
+  --admin-muted: 215 12% 55%;
+  --admin-accent: 187 100% 50%;
+  --admin-accent-dim: 187 100% 50% / 0.2;
+  --admin-positive: 152 100% 48%;
+  --admin-negative: 350 89% 60%;
+  color: hsl(var(--admin-fg));
+  background-color: hsl(var(--admin-bg));
+}
+
+.admin-grid-bg {
+  background-image:
+    linear-gradient(hsl(var(--admin-accent) / 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--admin-accent) / 0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.admin-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-input {
+  @apply w-full border text-sm shadow-sm transition-colors placeholder:text-[#6B7280] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00D4FF]/35 focus-visible:border-[#00D4FF]/60;
+}
+
+/* Company admin — warm product UI, indigo accent */
+.company-theme {
+  --company-bg: 216 28% 7%;
+  --company-surface: 216 24% 11%;
+  --company-card: 216 22% 14%;
+  --company-border: 216 18% 20%;
+  --company-fg: 210 25% 96%;
+  --company-muted: 215 14% 58%;
+  --company-accent: 239 84% 67%;
+  --company-positive: 172 66% 50%;
+  --company-warning: 38 92% 50%;
+  color: hsl(var(--company-fg));
+  background-color: hsl(var(--company-bg));
+}
+
+.company-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.company-input {
+  @apply w-full rounded-lg border border-[#30363D] bg-[#0D1117] px-3 py-2 text-sm text-[#E6EDF3] transition-colors placeholder:text-[#6E7681] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6366F1]/40 focus-visible:border-[#6366F1]/50;
+}
+
+/* User workspace — calm, approachable, soft violet accent */
+.app-theme {
+  --app-bg: 228 35% 7%;
+  --app-surface: 228 28% 11%;
+  --app-card: 228 26% 13%;
+  --app-border: 228 20% 22%;
+  --app-fg: 210 30% 96%;
+  --app-muted: 215 16% 62%;
+  --app-accent: 239 84% 74%;
+  --app-positive: 160 60% 50%;
+  color: hsl(var(--app-fg));
+  background-color: #0a0e1a;
+}
+
+.app-input {
+  @apply w-full rounded-xl border border-[#1E293B] bg-[#0A0E1A] px-4 py-2.5 text-sm text-[#E2E8F0] transition-colors placeholder:text-[#64748B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#818CF8]/35 focus-visible:border-[#818CF8]/50;
+}
+
+.app-glow-avatar {
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.25), 0 0 24px rgba(129, 140, 248, 0.15);
 }
