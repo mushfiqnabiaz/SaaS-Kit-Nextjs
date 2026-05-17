@@ -1,4 +1,4 @@
-import { ROLES, type Role } from "@/config/roles";
+import { ROLES } from "@/config/roles";
 import { requirePermission } from "@/lib/auth/rbac";
 import { requireApiUser } from "@/lib/api/auth";
 import {
@@ -8,6 +8,7 @@ import {
   parsePagination,
   sanitizeUser,
 } from "@/lib/api/response";
+import type { UserListFilters } from "@/lib/db/interfaces";
 import { getUserRepository } from "@/lib/db/factory";
 
 export async function GET(request: Request) {
@@ -18,13 +19,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const { page, limit } = parsePagination(searchParams);
 
-    const filters: {
-      page: number;
-      limit: number;
-      companyId?: string;
-      role?: Role;
-      isActive?: boolean;
-    } = { page, limit };
+    const filters: UserListFilters = { page, limit };
 
     if (user.role === ROLES.COMPANY_ADMIN) {
       if (!user.companyId) {
@@ -46,8 +41,12 @@ export async function GET(request: Request) {
     }
 
     const companyIdParam = searchParams.get("companyId");
-    if (user.role === ROLES.SUPERADMIN && companyIdParam) {
-      filters.companyId = companyIdParam;
+    if (user.role === ROLES.SUPERADMIN) {
+      if (companyIdParam) {
+        filters.companyId = companyIdParam;
+      } else {
+        filters.allowUnscoped = true;
+      }
     }
 
     const { users, total } = await getUserRepository().list(filters);

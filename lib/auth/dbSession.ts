@@ -18,7 +18,7 @@ export async function createDbSession(
 }
 
 export async function isSessionValid(sessionId: string | undefined | null): Promise<boolean> {
-  if (!sessionId) return true;
+  if (!sessionId) return false;
   const session = await getSessionRepository().findById(sessionId);
   if (!session) return false;
   return session.expiresAt > new Date();

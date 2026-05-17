@@ -8,7 +8,8 @@ Production-oriented multi-tenant SaaS starter built with **Next.js 14**, **Auth.
 - Email/password login (Auth.js credentials)
 - Optional Google OAuth
 - JWT sessions with server-side session records
-- Password reset flow (Resend)
+- Email verification for new company sign-ups (optional)
+- Password reset, user invites, and verification emails via **SMTP** (or Resend fallback)
 - Rate limiting on login, registration, and invites (Upstash Redis, optional)
 - Middleware route protection and tenant resolution
 
@@ -62,7 +63,7 @@ Production-oriented multi-tenant SaaS starter built with **Next.js 14**, **Auth.
 | Styling | Tailwind CSS, Radix UI |
 | ORM (Postgres) | Drizzle |
 | ODM (Mongo) | Mongoose |
-| Email | Resend + React Email |
+| Email | Nodemailer (SMTP), Resend fallback, React Email |
 | Charts | Recharts |
 | Validation | Zod |
 
@@ -74,7 +75,7 @@ Production-oriented multi-tenant SaaS starter built with **Next.js 14**, **Auth.
 - Node.js 20+
 - MongoDB **or** PostgreSQL
 - (Optional) Upstash Redis for rate limiting
-- (Optional) Resend API key for transactional email
+- (Optional) SMTP server or Resend API key for transactional email
 
 ### 1. Install dependencies
 
@@ -139,8 +140,14 @@ Open [http://localhost:3000](http://localhost:3000).
 | `NEXTAUTH_URL` | Yes | App URL (e.g. `http://localhost:3000`) |
 | `GOOGLE_CLIENT_ID` | No | Google OAuth |
 | `GOOGLE_CLIENT_SECRET` | No | Google OAuth |
-| `RESEND_API_KEY` | No | Email delivery |
-| `EMAIL_FROM` | No | Sender address |
+| `SMTP_HOST` | No* | SMTP server (e.g. Mailtrap, SendGrid, Gmail) |
+| `SMTP_PORT` | No | SMTP port (default `587`) |
+| `SMTP_SECURE` | No | `true` for TLS on port 465 |
+| `SMTP_USER` | No | SMTP username |
+| `SMTP_PASSWORD` | No | SMTP password |
+| `EMAIL_FROM` | No | From address for all mail |
+| `RESEND_API_KEY` | No | Fallback if `SMTP_HOST` is unset |
+| `REQUIRE_EMAIL_VERIFICATION` | No | Block login until email verified (`true`/`false`) |
 | `UPSTASH_REDIS_REST_URL` | No | Rate limit + tenant cache |
 | `UPSTASH_REDIS_REST_TOKEN` | No | Rate limit + tenant cache |
 | `SEED_SUPERADMIN_EMAIL` | No | Seed superadmin email |
@@ -182,6 +189,42 @@ npm run seed
 ```
 
 The same repository interfaces work for both drivers; implementations live under `lib/db/mongo/` and `lib/db/postgres/`.
+
+---
+
+## Email (SMTP)
+
+Transactional email is sent through a single `sendEmail()` helper (`lib/email/send.ts`). Provider selection:
+
+1. **SMTP** — if `SMTP_HOST` is set (recommended for self-hosted and dev with [Mailtrap](https://mailtrap.io))
+2. **Resend** — if `RESEND_API_KEY` is set and SMTP is not configured
+3. **Console** — logs to the server console when neither is configured
+
+### What sends email
+
+| Flow | Trigger | Template |
+|------|---------|----------|
+| User invite | `POST /api/users/invite` | `InviteEmail` |
+| Forgot password | `POST /api/auth/forgot-password` | `ForgotPasswordEmail` |
+| Email verification | Company registration (`companyName` sign-up) | `VerifyEmail` |
+
+Invited users and Google OAuth sign-ins are marked verified automatically; no verification email is sent for those paths.
+
+### Example (Mailtrap)
+
+```env
+SMTP_HOST=smtp.mailtrap.io
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-mailtrap-user
+SMTP_PASSWORD=your-mailtrap-password
+EMAIL_FROM=noreply@yourdomain.com
+REQUIRE_EMAIL_VERIFICATION=true
+```
+
+After registration with a new company, users are redirected to login with a “check your inbox” message. Verification links hit `GET /api/auth/verify-email?token=...`. Users can resend from the login page or `POST /api/auth/resend-verification`.
+
+For PostgreSQL, run `npm run db:push` after pulling so `users.email_verified` and `email_verification_tokens` exist.
 
 ---
 

@@ -10,7 +10,7 @@ const links = [
   { href: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/app/profile", label: "My Profile", icon: UserCircle },
   { href: "/app/team", label: "Team", icon: Users },
-  { href: "/app/notifications", label: "Notifications", icon: Bell },
+  { href: "/app/notifications", label: "Notifications (demo)", icon: Bell },
 ] as const;
 
 interface AppSidebarProps {

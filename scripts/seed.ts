@@ -74,7 +74,11 @@ async function main(): Promise<void> {
     await import("../lib/db/factory");
 
   const superadminEmail = process.env.SEED_SUPERADMIN_EMAIL ?? "admin@example.com";
-  const superadminPassword = process.env.SEED_SUPERADMIN_PASSWORD ?? "change-me-secure-password";
+  const superadminPassword = process.env.SEED_SUPERADMIN_PASSWORD;
+  if (!superadminPassword) {
+    console.error("Set SEED_SUPERADMIN_PASSWORD before running seed.");
+    process.exit(1);
+  }
 
   const userRepo = getUserRepository();
   const companyRepo = getCompanyRepository();
@@ -89,6 +93,7 @@ async function main(): Promise<void> {
       passwordHash,
       role: ROLES.SUPERADMIN,
       companyId: null,
+      emailVerified: true,
     });
     console.log(`Created superadmin: ${superadminEmail}`);
   } else {
@@ -134,7 +139,11 @@ async function main(): Promise<void> {
     },
   ] as const;
 
-  const demoPassword = process.env.SEED_DEMO_PASSWORD ?? "demo-password-change-me";
+  const demoPassword = process.env.SEED_DEMO_PASSWORD;
+  if (!demoPassword) {
+    console.error("Set SEED_DEMO_PASSWORD before running seed.");
+    process.exit(1);
+  }
 
   for (const entry of seedUsers) {
     const existing = await userRepo.findByEmail(entry.email);
@@ -151,6 +160,7 @@ async function main(): Promise<void> {
       role: entry.role,
       companyId: demoCompany.id,
       companyRoleId: entry.companyRoleId,
+      emailVerified: true,
     });
     console.log(`Created user: ${entry.email} (${entry.role})`);
   }

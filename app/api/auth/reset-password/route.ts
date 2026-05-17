@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { BCRYPT_ROUNDS } from "@/config/constants";
+import { enforceRateLimit, rateLimitKeyFromIp } from "@/lib/api/rateLimitGuard";
 import { AUDIT_ACTIONS } from "@/lib/audit/actions";
 import { writeAuditLog } from "@/lib/audit/writeAuditLog";
 import { revokeAllUserSessions } from "@/lib/auth/dbSession";
@@ -12,6 +13,13 @@ import {
 import { resetPasswordApiSchema } from "@/lib/validations/auth";
 
 export async function POST(request: Request) {
+  const limited = await enforceRateLimit(request, {
+    key: rateLimitKeyFromIp(request, "reset-password"),
+    limit: 10,
+    window: "1 h",
+  });
+  if (limited) return limited;
+
   try {
     const body: unknown = await request.json();
     const parsed = resetPasswordApiSchema.safeParse(body);

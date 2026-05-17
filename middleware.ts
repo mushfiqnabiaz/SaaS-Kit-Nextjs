@@ -83,12 +83,7 @@ export async function middleware(request: NextRequest) {
     process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN,
   );
 
-  if (
-    companyId &&
-    redisConfigured &&
-    !tenantResult.ok &&
-    tenantResult.reason !== "cache_miss"
-  ) {
+  if (companyId && redisConfigured && !tenantResult.ok) {
     if (isApiPath(pathname)) {
       return NextResponse.json(
         { data: null, error: "Company is inactive or unavailable" },

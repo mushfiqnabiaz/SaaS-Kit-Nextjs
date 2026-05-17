@@ -14,6 +14,7 @@ const userSchema = new Schema(
     },
     companyId: { type: Schema.Types.ObjectId, ref: "Company", default: null },
     companyRoleId: { type: Schema.Types.ObjectId, ref: "CompanyRole", default: null },
+    emailVerified: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true },

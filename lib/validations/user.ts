@@ -23,6 +23,14 @@ export const updateUserSchema = z.object({
   currentPassword: z.string().optional(),
 });
 
+/** Fields a company admin may set on another user (no email/password/superadmin). */
+export const adminUpdateUserSchema = z.object({
+  name: z.string().min(2).optional(),
+  role: z.enum([ROLES.USER, ROLES.COMPANY_ADMIN]).optional(),
+  companyRoleId: z.string().min(1).nullable().optional(),
+  isActive: z.boolean().optional(),
+});
+
 export const profileUpdateSchema = z.object({
   name: z.string().min(2).optional(),
   password: passwordRules.optional(),

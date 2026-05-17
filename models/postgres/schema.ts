@@ -63,6 +63,7 @@ export const users = pgTable(
     companyRoleId: uuid("company_role_id").references(() => companyRoles.id, {
       onDelete: "set null",
     }),
+    emailVerified: boolean("email_verified").notNull().default(false),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -74,22 +75,29 @@ export const users = pgTable(
   ],
 );
 
-export const invites = pgTable("invites", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  email: varchar("email", { length: 255 }).notNull(),
-  companyId: uuid("company_id")
-    .notNull()
-    .references(() => companies.id, { onDelete: "cascade" }),
-  role: inviteRoleEnum("role").notNull().default("user"),
-  companyRoleId: uuid("company_role_id").references(() => companyRoles.id, {
-    onDelete: "set null",
-  }),
-  token: varchar("token", { length: 512 }).notNull().unique(),
-  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-  usedAt: timestamp("used_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const invites = pgTable(
+  "invites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: varchar("email", { length: 255 }).notNull(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    role: inviteRoleEnum("role").notNull().default("user"),
+    companyRoleId: uuid("company_role_id").references(() => companyRoles.id, {
+      onDelete: "set null",
+    }),
+    token: varchar("token", { length: 512 }).notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("invites_company_id_idx").on(table.companyId),
+    index("invites_company_email_idx").on(table.companyId, table.email),
+  ],
+);
 
 export const auditLogs = pgTable("audit_logs", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -135,6 +143,23 @@ export const platformSettings = pgTable("platform_settings", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const emailVerificationTokens = pgTable(
+  "email_verification_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: varchar("token_hash", { length: 128 }).notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("email_verification_user_idx").on(table.userId),
+    index("email_verification_expires_idx").on(table.expiresAt),
+  ],
+);
 
 export const passwordResetTokens = pgTable(
   "password_reset_tokens",

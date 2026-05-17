@@ -66,6 +66,21 @@ describe("canAccessRoute", () => {
   it("allows authenticated access to api/users (handler checks permissions)", () => {
     expect(canAccessRoute(ROLES.USER, "/api/users")).toBe(true);
   });
+
+  it("blocks user from admin API routes", () => {
+    expect(canAccessRoute(ROLES.USER, "/api/admin/users")).toBe(false);
+    expect(canAccessRoute(ROLES.COMPANY_ADMIN, "/api/admin/users")).toBe(false);
+  });
+
+  it("allows company_admin on company API routes", () => {
+    expect(canAccessRoute(ROLES.COMPANY_ADMIN, "/api/company/roles")).toBe(true);
+    expect(canAccessRoute(ROLES.USER, "/api/company/roles")).toBe(false);
+  });
+
+  it("allows superadmin on admin and company API routes", () => {
+    expect(canAccessRoute(ROLES.SUPERADMIN, "/api/admin/stats")).toBe(true);
+    expect(canAccessRoute(ROLES.SUPERADMIN, "/api/company/roles")).toBe(true);
+  });
 });
 
 describe("isApiPath", () => {

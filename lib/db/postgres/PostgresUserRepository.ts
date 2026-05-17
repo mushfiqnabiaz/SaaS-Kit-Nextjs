@@ -20,6 +20,7 @@ function toUserRecord(row: typeof users.$inferSelect): UserRecord {
     role: row.role as Role,
     companyId: row.companyId,
     companyRoleId: row.companyRoleId,
+    emailVerified: row.emailVerified,
     isActive: row.isActive,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -63,6 +64,7 @@ export class PostgresUserRepository implements IUserRepository {
         role: data.role,
         companyId: data.companyId ?? null,
         companyRoleId: data.companyRoleId ?? null,
+        emailVerified: data.emailVerified ?? false,
       })
       .returning();
     return toUserRecord(row);
@@ -89,8 +91,10 @@ export class PostgresUserRepository implements IUserRepository {
 
     if (filters.companyId) {
       conditions.push(eq(users.companyId, filters.companyId));
+    } else if (!filters.allowUnscoped) {
+      throw new Error("companyId is required for tenant-scoped user list");
     } else {
-      warnUnscopedQuery("PostgresUserRepository.list", "unknown", false);
+      warnUnscopedQuery("PostgresUserRepository.list", "unknown", true);
     }
 
     if (filters.role) conditions.push(eq(users.role, filters.role));

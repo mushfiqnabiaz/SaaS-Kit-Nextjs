@@ -1,4 +1,3 @@
-import { ROLES } from "@/config/roles";
 import { AUDIT_ACTIONS } from "@/lib/audit/actions";
 import { writeAuditLog } from "@/lib/audit/writeAuditLog";
 import { requirePermission } from "@/lib/auth/rbac";
@@ -16,11 +15,11 @@ interface RouteParams {
 export async function PATCH(request: Request, { params }: RouteParams) {
   try {
     const user = await requireApiUser();
-    requirePermission(user, "roles", "update");
-
-    if (user.role !== ROLES.COMPANY_ADMIN || !user.companyId) {
-      return apiError("Only company admins can update roles", 403);
+    if (!user.companyId) {
+      return apiError("No company assigned", 400);
     }
+
+    requirePermission(user, "roles", "update", { targetCompanyId: user.companyId });
 
     const existing = await assertCompanyRoleBelongsToCompany(params.id, user.companyId);
     if (!existing) {
@@ -95,11 +94,11 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     const user = await requireApiUser();
-    requirePermission(user, "roles", "delete");
-
-    if (user.role !== ROLES.COMPANY_ADMIN || !user.companyId) {
-      return apiError("Only company admins can delete roles", 403);
+    if (!user.companyId) {
+      return apiError("No company assigned", 400);
     }
+
+    requirePermission(user, "roles", "delete", { targetCompanyId: user.companyId });
 
     const existing = await assertCompanyRoleBelongsToCompany(params.id, user.companyId);
     if (!existing) {

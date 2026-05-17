@@ -18,6 +18,7 @@ function toUserRecord(doc: {
   role: Role;
   companyId?: { toString(): string } | null;
   companyRoleId?: { toString(): string } | null;
+  emailVerified: boolean;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -30,6 +31,7 @@ function toUserRecord(doc: {
     role: doc.role,
     companyId: doc.companyId ? doc.companyId.toString() : null,
     companyRoleId: doc.companyRoleId ? doc.companyRoleId.toString() : null,
+    emailVerified: doc.emailVerified ?? false,
     isActive: doc.isActive,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
@@ -71,6 +73,7 @@ export class MongoUserRepository implements IUserRepository {
       role: data.role,
       companyId: data.companyId ?? null,
       companyRoleId: data.companyRoleId ?? null,
+      emailVerified: data.emailVerified ?? false,
     });
     return toUserRecord(doc);
   }
@@ -89,8 +92,10 @@ export class MongoUserRepository implements IUserRepository {
 
     if (filters.companyId) {
       query = mergeTenantScope(query, filters.companyId);
+    } else if (!filters.allowUnscoped) {
+      throw new Error("companyId is required for tenant-scoped user list");
     } else {
-      warnUnscopedQuery("MongoUserRepository.list", "unknown", false);
+      warnUnscopedQuery("MongoUserRepository.list", "unknown", true);
     }
 
     if (filters.role) query.role = filters.role;

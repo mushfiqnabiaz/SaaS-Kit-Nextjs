@@ -13,7 +13,7 @@ import {
 } from "@/lib/api/response";
 import { assertCompanyRoleBelongsToCompany } from "@/lib/company/rolesServer";
 import { getUserRepository } from "@/lib/db/factory";
-import { updateUserSchema } from "@/lib/validations/user";
+import { adminUpdateUserSchema, updateUserSchema } from "@/lib/validations/user";
 
 interface RouteParams {
   params: { id: string };
@@ -62,13 +62,12 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     const isSelf = user.userId === target.id;
     const body: unknown = await request.json();
-    const parsed = updateUserSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return apiError(parsed.error.flatten().fieldErrors, 400);
-    }
 
     if (isSelf) {
+      const parsed = updateUserSchema.safeParse(body);
+      if (!parsed.success) {
+        return apiError(parsed.error.flatten().fieldErrors, 400);
+      }
       requirePermission(user, "users", "update", { targetUserId: target.id });
       const { name, password, currentPassword } = parsed.data;
 
@@ -114,17 +113,17 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       return apiSuccess(sanitizeUser(updated));
     }
 
+    const parsed = adminUpdateUserSchema.safeParse(body);
+    if (!parsed.success) {
+      return apiError(parsed.error.flatten().fieldErrors, 400);
+    }
+
     requirePermission(user, "users", "update", {
       targetCompanyId: target.companyId,
     });
 
-    if (user.role === ROLES.COMPANY_ADMIN) {
-      if (user.companyId !== target.companyId) {
-        return apiError("Forbidden", 403);
-      }
-      if (parsed.data.role === ROLES.SUPERADMIN) {
-        return apiError("Cannot assign superadmin role", 403);
-      }
+    if (user.role === ROLES.COMPANY_ADMIN && user.companyId !== target.companyId) {
+      return apiError("Forbidden", 403);
     }
 
     if (parsed.data.companyRoleId && user.companyId) {
@@ -137,16 +136,10 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       }
     }
 
-    const { currentPassword: _omitCp, password, ...rest } = parsed.data;
-    void _omitCp;
-    const updatePayload: Parameters<typeof userRepo.update>[1] = { ...rest };
+    const updatePayload: Parameters<typeof userRepo.update>[1] = { ...parsed.data };
 
     if (parsed.data.role === ROLES.COMPANY_ADMIN) {
       updatePayload.companyRoleId = null;
-    }
-
-    if (password) {
-      updatePayload.passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
     }
 
     const roleChanged = parsed.data.role && parsed.data.role !== target.role;
@@ -163,18 +156,6 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       companyId: updated.companyId,
       req: request,
     });
-
-    if (password) {
-      writeAuditLog({
-        actorId: user.userId,
-        actorRole: user.role,
-        action: AUDIT_ACTIONS.PASSWORD_CHANGED,
-        resource: "users",
-        resourceId: updated.id,
-        companyId: updated.companyId,
-        req: request,
-      });
-    }
 
     return apiSuccess(sanitizeUser(updated));
   } catch (error) {

@@ -2,7 +2,30 @@ import { ROLES, type Role } from "@/config/roles";
 import { requirePermission } from "@/lib/auth/rbac";
 import { requireApiUser } from "@/lib/api/auth";
 import { apiError, apiSuccess, handleApiError, parsePagination } from "@/lib/api/response";
+import type { CompanyRecord, UserRecord } from "@/lib/db/interfaces";
 import { getAuditRepository, getCompanyRepository, getUserRepository } from "@/lib/db/factory";
+
+async function loadActorMap(actorIds: string[]): Promise<Map<string, UserRecord>> {
+  const userRepo = getUserRepository();
+  const uniqueIds = Array.from(new Set(actorIds));
+  const actors = await Promise.all(uniqueIds.map((id) => userRepo.findById(id)));
+  const map = new Map<string, UserRecord>();
+  for (const actor of actors) {
+    if (actor) map.set(actor.id, actor);
+  }
+  return map;
+}
+
+async function loadCompanyMap(companyIds: string[]): Promise<Map<string, CompanyRecord>> {
+  const companyRepo = getCompanyRepository();
+  const uniqueIds = Array.from(new Set(companyIds.filter(Boolean))) as string[];
+  const companies = await Promise.all(uniqueIds.map((id) => companyRepo.findById(id)));
+  const map = new Map<string, CompanyRecord>();
+  for (const company of companies) {
+    if (company) map.set(company.id, company);
+  }
+  return map;
+}
 
 export async function GET(request: Request) {
   try {
@@ -39,23 +62,21 @@ export async function GET(request: Request) {
       limit,
     });
 
-    const userRepo = getUserRepository();
-    const companyRepo = getCompanyRepository();
+    const [actorMap, companyMap] = await Promise.all([
+      loadActorMap(logs.map((log) => log.actorId)),
+      loadCompanyMap(logs.map((log) => log.companyId).filter((id): id is string => Boolean(id))),
+    ]);
 
-    const enriched = await Promise.all(
-      logs.map(async (log) => {
-        const actor = await userRepo.findById(log.actorId);
-        const company = log.companyId
-          ? await companyRepo.findById(log.companyId)
-          : null;
-        return {
-          ...log,
-          actorName: actor?.name ?? "Unknown",
-          actorEmail: actor?.email ?? "",
-          companyName: company?.name ?? null,
-        };
-      }),
-    );
+    const enriched = logs.map((log) => {
+      const actor = actorMap.get(log.actorId);
+      const company = log.companyId ? companyMap.get(log.companyId) : null;
+      return {
+        ...log,
+        actorName: actor?.name ?? "Unknown",
+        actorEmail: actor?.email ?? "",
+        companyName: company?.name ?? null,
+      };
+    });
 
     return apiSuccess(enriched, {
       page,

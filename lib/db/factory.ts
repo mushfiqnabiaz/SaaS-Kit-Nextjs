@@ -4,6 +4,7 @@ import type {
   ICompanyRepository,
   ICompanyRoleRepository,
   IInviteRepository,
+  IEmailVerificationRepository,
   IPasswordResetRepository,
   IPermissionRepository,
   IPlatformSettingsRepository,
@@ -14,6 +15,7 @@ import { MongoAuditRepository } from "@/lib/db/mongo/MongoAuditRepository";
 import { MongoCompanyRepository } from "@/lib/db/mongo/MongoCompanyRepository";
 import { MongoCompanyRoleRepository } from "@/lib/db/mongo/MongoCompanyRoleRepository";
 import { MongoInviteRepository } from "@/lib/db/mongo/MongoInviteRepository";
+import { MongoEmailVerificationRepository } from "@/lib/db/mongo/MongoEmailVerificationRepository";
 import { MongoPasswordResetRepository } from "@/lib/db/mongo/MongoPasswordResetRepository";
 import { MongoSessionRepository } from "@/lib/db/mongo/MongoSessionRepository";
 import { MongoPlatformSettingsRepository } from "@/lib/db/mongo/MongoPlatformSettingsRepository";
@@ -22,6 +24,7 @@ import { PostgresAuditRepository } from "@/lib/db/postgres/PostgresAuditReposito
 import { PostgresCompanyRepository } from "@/lib/db/postgres/PostgresCompanyRepository";
 import { PostgresCompanyRoleRepository } from "@/lib/db/postgres/PostgresCompanyRoleRepository";
 import { PostgresInviteRepository } from "@/lib/db/postgres/PostgresInviteRepository";
+import { PostgresEmailVerificationRepository } from "@/lib/db/postgres/PostgresEmailVerificationRepository";
 import { PostgresPasswordResetRepository } from "@/lib/db/postgres/PostgresPasswordResetRepository";
 import { PostgresSessionRepository } from "@/lib/db/postgres/PostgresSessionRepository";
 import { PostgresPlatformSettingsRepository } from "@/lib/db/postgres/PostgresPlatformSettingsRepository";
@@ -46,6 +49,7 @@ let inviteRepository: IInviteRepository | null = null;
 let permissionRepository: IPermissionRepository | null = null;
 let sessionRepository: ISessionRepository | null = null;
 let passwordResetRepository: IPasswordResetRepository | null = null;
+let emailVerificationRepository: IEmailVerificationRepository | null = null;
 let platformSettingsRepository: IPlatformSettingsRepository | null = null;
 let companyRoleRepository: ICompanyRoleRepository | null = null;
 
@@ -58,6 +62,7 @@ export function resetDbFactories(): void {
   permissionRepository = null;
   sessionRepository = null;
   passwordResetRepository = null;
+  emailVerificationRepository = null;
   platformSettingsRepository = null;
   companyRoleRepository = null;
 }
@@ -132,6 +137,17 @@ export function getPlatformSettingsRepository(): IPlatformSettingsRepository {
       ? MongoPlatformSettingsRepository.getInstance()
       : PostgresPlatformSettingsRepository.getInstance();
   return platformSettingsRepository;
+}
+
+export function getEmailVerificationRepository(): IEmailVerificationRepository {
+  if (emailVerificationRepository) return emailVerificationRepository;
+
+  const driver = getDriver();
+  emailVerificationRepository =
+    driver === "mongo"
+      ? MongoEmailVerificationRepository.getInstance()
+      : PostgresEmailVerificationRepository.getInstance();
+  return emailVerificationRepository;
 }
 
 export function getPasswordResetRepository(): IPasswordResetRepository {

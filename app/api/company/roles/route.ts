@@ -1,4 +1,3 @@
-import { ROLES } from "@/config/roles";
 import { AUDIT_ACTIONS } from "@/lib/audit/actions";
 import { writeAuditLog } from "@/lib/audit/writeAuditLog";
 import { requirePermission } from "@/lib/auth/rbac";
@@ -13,11 +12,11 @@ import {
 export async function GET() {
   try {
     const user = await requireApiUser();
-    requirePermission(user, "roles", "list");
-
-    if (user.role !== ROLES.COMPANY_ADMIN || !user.companyId) {
-      return apiError("Only company admins can manage roles", 403);
+    if (!user.companyId) {
+      return apiError("No company assigned", 400);
     }
+
+    requirePermission(user, "roles", "list", { targetCompanyId: user.companyId });
 
     const roles = await getCompanyRoleRepository().list(user.companyId);
     const withCounts = await Promise.all(
@@ -43,11 +42,11 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const user = await requireApiUser();
-    requirePermission(user, "roles", "create");
-
-    if (user.role !== ROLES.COMPANY_ADMIN || !user.companyId) {
-      return apiError("Only company admins can create roles", 403);
+    if (!user.companyId) {
+      return apiError("No company assigned", 400);
     }
+
+    requirePermission(user, "roles", "create", { targetCompanyId: user.companyId });
 
     const body: unknown = await request.json();
     const parsed = createCompanyRoleSchema.safeParse(body);

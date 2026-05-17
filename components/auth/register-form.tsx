@@ -76,13 +76,23 @@ export function RegisterForm() {
       body: JSON.stringify(payload),
     });
 
-    const json = (await res.json()) as { error?: string | Record<string, string[]> };
+    const json = (await res.json()) as {
+      error?: string | Record<string, string[]>;
+      data?: { verificationEmailSent?: boolean };
+    };
 
     if (!res.ok) {
       setBannerError(
         typeof json.error === "string"
           ? json.error
           : "Registration failed. Please check your details and try again.",
+      );
+      return;
+    }
+
+    if (json.data?.verificationEmailSent) {
+      router.push(
+        `/login?email=${encodeURIComponent(values.email)}&check_email=1`,
       );
       return;
     }

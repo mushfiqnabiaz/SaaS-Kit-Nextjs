@@ -13,7 +13,9 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "seed": "tsx scripts/seed.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test e2e/auth.spec.ts e2e/rbac.spec.ts e2e/ui-authenticated.spec.ts",
+    "test:auth": "tsx scripts/test-auth-flows.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -26,6 +28,7 @@
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-toast": "^1.2.15",
     "@react-email/components": "^1.0.12",
+    "@react-email/render": "^2.0.8",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.0",
     "bcryptjs": "^3.0.3",
@@ -38,6 +41,7 @@
     "mongoose": "^9.6.2",
     "next": "14.2.35",
     "next-auth": "^5.0.0-beta.31",
+    "nodemailer": "^7.0.13",
     "postgres": "^3.4.9",
     "react": "^18",
     "react-dom": "^18",
@@ -53,6 +57,7 @@
     "@playwright/test": "^1.60.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
+    "@types/nodemailer": "^8.0.0",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@vitejs/plugin-react": "^6.0.2",

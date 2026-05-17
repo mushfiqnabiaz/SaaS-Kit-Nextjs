@@ -34,6 +34,13 @@ export function getRouteZone(pathname: string): RouteZone {
     return "public";
   }
 
+  if (
+    pathname === "/api/auth/verify-email" ||
+    pathname === "/api/auth/resend-verification"
+  ) {
+    return "public";
+  }
+
   if (pathname.startsWith("/superadmin")) {
     return "superadmin";
   }
@@ -79,8 +86,11 @@ export function canAccessRoute(role: Role, pathname: string): boolean {
     case "app":
       return true;
     case "api":
-      if (pathname.startsWith("/api/users")) {
-        return true;
+      if (pathname.startsWith("/api/admin/")) {
+        return role === ROLES.SUPERADMIN;
+      }
+      if (pathname.startsWith("/api/company/")) {
+        return role === ROLES.SUPERADMIN || role === ROLES.COMPANY_ADMIN;
       }
       return true;
     default:

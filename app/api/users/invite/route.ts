@@ -8,7 +8,8 @@ import { requireApiUser } from "@/lib/api/auth";
 import { enforceRateLimit } from "@/lib/api/rateLimitGuard";
 import { apiError, apiSuccess, handleApiError } from "@/lib/api/response";
 import { assertCompanyRoleBelongsToCompany } from "@/lib/company/rolesServer";
-import { getCompanyRepository, getInviteRepository } from "@/lib/db/factory";
+import { assertSeatAvailable } from "@/lib/company/seats";
+import { getCompanyRepository, getInviteRepository, getUserRepository } from "@/lib/db/factory";
 import { sendEmail } from "@/lib/email/send";
 import { inviteUserSchema } from "@/lib/validations/user";
 import { InviteEmail } from "@/emails/InviteEmail";
@@ -16,10 +17,10 @@ import { InviteEmail } from "@/emails/InviteEmail";
 export async function GET() {
   try {
     const user = await requireApiUser();
-    requirePermission(user, "users", "list");
+    requirePermission(user, "users", "list", { targetCompanyId: user.companyId });
 
-    if (user.role !== ROLES.COMPANY_ADMIN || !user.companyId) {
-      return apiError("Only company admins can list invites", 403);
+    if (!user.companyId) {
+      return apiError("No company assigned", 400);
     }
 
     const invites = await getInviteRepository().listPending(user.companyId);
@@ -48,11 +49,12 @@ export async function POST(request: Request) {
       window: "1 h",
     });
     if (limited) return limited;
-    requirePermission(user, "users", "create");
 
-    if (user.role !== ROLES.COMPANY_ADMIN || !user.companyId) {
-      return apiError("Only company admins can invite users", 403);
+    if (!user.companyId) {
+      return apiError("No company assigned", 400);
     }
+
+    requirePermission(user, "users", "create", { targetCompanyId: user.companyId });
 
     const body: unknown = await request.json();
     const parsed = inviteUserSchema.safeParse(body);
@@ -64,6 +66,23 @@ export async function POST(request: Request) {
     const company = await getCompanyRepository().findById(user.companyId);
     if (!company?.isActive) {
       return apiError("Company not found or inactive", 400);
+    }
+
+    const inviteEmail = parsed.data.email.toLowerCase();
+    const existingUser = await getUserRepository().findByEmail(inviteEmail);
+    if (existingUser?.companyId === user.companyId && existingUser.isActive) {
+      return apiError("This user is already a member of your company", 409);
+    }
+
+    const inviteRepo = getInviteRepository();
+    const pending = await inviteRepo.findPendingByEmail(inviteEmail, user.companyId);
+    if (pending) {
+      return apiError("A pending invite already exists for this email", 409);
+    }
+
+    const seatCheck = await assertSeatAvailable(user.companyId);
+    if (!seatCheck.ok) {
+      return apiError(seatCheck.message, 403);
     }
 
     let companyRoleId: string | null = null;
@@ -78,11 +97,10 @@ export async function POST(request: Request) {
       companyRoleId = customRole.id;
     }
 
-    const inviteRepo = getInviteRepository();
     const expiresAt = new Date(Date.now() + INVITE_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
 
     const invite = await inviteRepo.create({
-      email: parsed.data.email,
+      email: inviteEmail,
       companyId: user.companyId,
       role: parsed.data.role,
       companyRoleId,
@@ -92,7 +110,7 @@ export async function POST(request: Request) {
 
     const token = await signInviteToken({
       inviteId: invite.id,
-      email: parsed.data.email,
+      email: inviteEmail,
       companyId: user.companyId,
       role: parsed.data.role,
     });
@@ -103,13 +121,17 @@ export async function POST(request: Request) {
     }
 
     const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
-    const inviteUrl = `${baseUrl}/register?token=${encodeURIComponent(token)}`;
+    const inviteUrl = `${baseUrl}/api/users/invite/accept?token=${encodeURIComponent(token)}`;
 
-    await sendEmail({
-      to: parsed.data.email,
+    const emailSent = await sendEmail({
+      to: inviteEmail,
       subject: `You're invited to join ${company.name}`,
       template: InviteEmail({ inviteUrl, companyName: company.name }),
     });
+
+    if (!emailSent) {
+      return apiError("Invite created but email could not be sent. Try resending.", 503);
+    }
 
     writeAuditLog({
       actorId: user.userId,

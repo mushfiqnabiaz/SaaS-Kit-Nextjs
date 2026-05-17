@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { BCRYPT_ROUNDS } from "@/config/constants";
 import { enforceRateLimit, rateLimitKeyFromIp } from "@/lib/api/rateLimitGuard";
-import { ROLES, type Role } from "@/config/roles";
+import { ROLES } from "@/config/roles";
 import { AUDIT_ACTIONS } from "@/lib/audit/actions";
 import { writeAuditLog } from "@/lib/audit/writeAuditLog";
 import { verifyInviteToken } from "@/lib/auth/inviteToken";
 import { getCompanyRepository, getInviteRepository, getUserRepository } from "@/lib/db/factory";
 import { sendEmail } from "@/lib/email/send";
+import { sendVerificationEmail } from "@/lib/email/verification";
 import { registerApiSchema } from "@/lib/validations/auth";
 import { WelcomeEmail } from "@/emails/WelcomeEmail";
 import { uniqueSlug } from "@/lib/utils/slug";
@@ -32,6 +33,19 @@ export async function POST(request: Request) {
     }
 
     const { name, email, password, companyName, inviteToken } = parsed.data;
+    const allowPublicSignup = process.env.ALLOW_PUBLIC_SIGNUP === "true";
+
+    if (!inviteToken && !companyName && !allowPublicSignup) {
+      return NextResponse.json(
+        {
+          data: null,
+          error:
+            "Registration requires an invitation or a new company. Contact your administrator.",
+        },
+        { status: 403 },
+      );
+    }
+
     const userRepo = getUserRepository();
     const existing = await userRepo.findByEmail(email);
 
@@ -72,6 +86,7 @@ export async function POST(request: Request) {
         companyId: payload.companyId,
         companyRoleId:
           payload.role === ROLES.USER ? (invite.companyRoleId ?? null) : null,
+        emailVerified: true,
       });
 
       await inviteRepo.markUsed(invite.id);
@@ -104,31 +119,44 @@ export async function POST(request: Request) {
       });
     }
 
-    let companyId: string | null = null;
-    let role: Role = ROLES.USER;
-
     if (companyName) {
       const companyRepo = getCompanyRepository();
       const slug = await uniqueSlug(companyName, (s) => companyRepo.findBySlug(s).then(Boolean));
 
-      const user = await userRepo.create({
-        name,
-        email,
-        passwordHash,
-        role: ROLES.COMPANY_ADMIN,
-        companyId: null,
-      });
+      let user: Awaited<ReturnType<typeof userRepo.create>> | null = null;
+      let company: Awaited<ReturnType<typeof companyRepo.create>> | null = null;
 
-      const company = await companyRepo.create({
-        name: companyName,
-        slug,
-        ownerId: user.id,
-      });
+      try {
+        user = await userRepo.create({
+          name,
+          email,
+          passwordHash,
+          role: ROLES.COMPANY_ADMIN,
+          companyId: null,
+          emailVerified: false,
+        });
 
-      companyId = company.id;
-      role = ROLES.COMPANY_ADMIN;
+        company = await companyRepo.create({
+          name: companyName,
+          slug,
+          ownerId: user.id,
+        });
 
-      const updated = await userRepo.update(user.id, { companyId: company.id });
+        const linked = await userRepo.update(user.id, { companyId: company.id });
+        if (!linked) {
+          throw new Error("Failed to link user to company");
+        }
+      } catch (registrationError) {
+        if (company) {
+          await companyRepo.softDelete(company.id);
+        }
+        if (user) {
+          await userRepo.softDelete(user.id);
+        }
+        throw registrationError;
+      }
+
+      const updated = await userRepo.findById(user!.id);
       if (!updated) {
         return NextResponse.json(
           { data: null, error: "Failed to finalize registration" },
@@ -142,7 +170,7 @@ export async function POST(request: Request) {
         action: AUDIT_ACTIONS.USER_CREATED,
         resource: "users",
         resourceId: updated.id,
-        companyId: company.id,
+        companyId: company!.id,
         req: request,
       });
 
@@ -151,16 +179,16 @@ export async function POST(request: Request) {
         actorRole: updated.role,
         action: AUDIT_ACTIONS.COMPANY_CREATED,
         resource: "companies",
-        resourceId: company.id,
-        companyId: company.id,
+        resourceId: company!.id,
+        companyId: company!.id,
         req: request,
       });
 
-      await sendEmail({
-        to: email,
-        subject: "Welcome!",
-        template: WelcomeEmail({ name }),
-      });
+      const verificationSent = await sendVerificationEmail(
+        updated.id,
+        updated.email,
+        updated.name,
+      );
 
       return NextResponse.json({
         data: {
@@ -169,45 +197,16 @@ export async function POST(request: Request) {
           email: updated.email,
           role: updated.role,
           companyId: updated.companyId,
+          verificationEmailSent: verificationSent,
         },
         error: null,
       });
     }
 
-    const user = await userRepo.create({
-      name,
-      email,
-      passwordHash,
-      role,
-      companyId,
-    });
-
-    writeAuditLog({
-      actorId: user.id,
-      actorRole: user.role,
-      action: AUDIT_ACTIONS.USER_CREATED,
-      resource: "users",
-      resourceId: user.id,
-      companyId: user.companyId,
-      req: request,
-    });
-
-    await sendEmail({
-      to: email,
-      subject: "Welcome!",
-      template: WelcomeEmail({ name }),
-    });
-
-    return NextResponse.json({
-      data: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        companyId: user.companyId,
-      },
-      error: null,
-    });
+    return NextResponse.json(
+      { data: null, error: "Registration requires an invitation or company name" },
+      { status: 400 },
+    );
   } catch (error) {
     console.error("[register]", error);
     return NextResponse.json(

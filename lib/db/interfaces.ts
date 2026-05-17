@@ -8,6 +8,7 @@ export interface UserRecord {
   role: Role;
   companyId: string | null;
   companyRoleId: string | null;
+  emailVerified: boolean;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -20,6 +21,7 @@ export interface CreateUserDTO {
   role: Role;
   companyId?: string | null;
   companyRoleId?: string | null;
+  emailVerified?: boolean;
 }
 
 export interface UpdateUserDTO {
@@ -29,11 +31,14 @@ export interface UpdateUserDTO {
   role?: Role;
   companyId?: string | null;
   companyRoleId?: string | null;
+  emailVerified?: boolean;
   isActive?: boolean;
 }
 
 export interface UserListFilters {
   companyId?: string;
+  /** Superadmin-only: allow listing users across all tenants */
+  allowUnscoped?: boolean;
   role?: Role;
   isActive?: boolean;
   search?: string;
@@ -296,6 +301,21 @@ export interface PasswordResetRecord {
 export interface IPasswordResetRepository {
   create(userId: string, tokenHash: string, expiresAt: Date): Promise<PasswordResetRecord>;
   findByTokenHash(tokenHash: string): Promise<PasswordResetRecord | null>;
+  deleteByUserId(userId: string): Promise<number>;
+  deleteById(id: string): Promise<boolean>;
+}
+
+export interface EmailVerificationRecord {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  expiresAt: Date;
+  createdAt: Date;
+}
+
+export interface IEmailVerificationRepository {
+  create(userId: string, tokenHash: string, expiresAt: Date): Promise<EmailVerificationRecord>;
+  findByTokenHash(tokenHash: string): Promise<EmailVerificationRecord | null>;
   deleteByUserId(userId: string): Promise<number>;
   deleteById(id: string): Promise<boolean>;
 }

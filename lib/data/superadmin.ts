@@ -136,7 +136,7 @@ export async function getOverviewPageData(): Promise<OverviewPageData> {
     userRepo.count({ createdAfter: thirtyDaysAgo }),
     userRepo.count({ createdAfter: sixtyDaysAgo }),
     companyRepo.list({ limit: 500 }),
-    userRepo.list({ limit: 1, page: 1 }),
+    userRepo.list({ limit: 1, page: 1, allowUnscoped: true }),
     auditRepo.list({ action: AUDIT_ACTIONS.LOGIN_SUCCESS, from: oneDayAgo, limit: 1 }),
     auditRepo.list({ limit: 10 }),
     companyRepo.list({ limit: 100 }),
@@ -284,6 +284,7 @@ export async function getUsersTableData(filters: {
     role: filters.role,
     companyId: filters.companyId,
     isActive: filters.isActive,
+    allowUnscoped: !filters.companyId,
   });
 
   const companyRepo = getCompanyRepository();

@@ -128,6 +128,24 @@
   .auth-field-error {
     @apply text-xs text-[hsl(var(--destructive))] auth-slide-down;
   }
+
+  .auth-btn-secondary {
+    @apply inline-flex h-11 w-full items-center justify-center rounded-lg border border-[hsl(var(--auth-border))] bg-transparent text-sm font-medium text-[hsl(var(--auth-fg))] transition-colors hover:border-[hsl(var(--auth-accent)/0.45)] hover:bg-[hsl(var(--auth-accent)/0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--auth-accent)/0.5)] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--auth-bg))] disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .auth-success-ring {
+    animation: auth-success-pulse 2.4s ease-in-out infinite;
+  }
+}
+
+@keyframes auth-success-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 hsl(152 76% 45% / 0.28);
+  }
+  50% {
+    box-shadow: 0 0 0 14px hsl(152 76% 45% / 0);
+  }
 }
 
 /* Superadmin dashboard — terminal aesthetic, electric cyan accent */

@@ -7,6 +7,7 @@ import { JWT_SESSION_MAX_AGE_SECONDS } from "@/config/constants";
 import { ROLES, type Role } from "@/config/roles";
 import { AUDIT_ACTIONS } from "@/lib/audit/actions";
 import { writeAuditLog } from "@/lib/audit/writeAuditLog";
+import { setTenantCache } from "@/lib/cache/tenantCache";
 import { createDbSession, isSessionValid } from "@/lib/auth/dbSession";
 import type { AuthTokenPayload } from "@/lib/auth/session";
 import { getCompanyRepository, getUserRepository } from "@/lib/db/factory";
@@ -71,6 +72,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
+        const requireEmailVerification =
+          process.env.REQUIRE_EMAIL_VERIFICATION === "true";
+
+        if (
+          requireEmailVerification &&
+          !user.emailVerified &&
+          user.role !== ROLES.SUPERADMIN
+        ) {
+          return null;
+        }
+
         const valid = await bcrypt.compare(password, user.passwordHash);
         if (!valid) {
           writeAuditLog({
@@ -89,6 +101,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (user.companyId) {
           const company = await getCompanyRepository().findById(user.companyId);
           plan = company?.plan ?? null;
+          if (company) {
+            await setTenantCache(company);
+          }
         }
 
         writeAuditLog({
@@ -116,7 +131,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           Google({
             clientId: process.env.GOOGLE_CLIENT_ID,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-            allowDangerousEmailAccountLinking: true,
+            allowDangerousEmailAccountLinking: false,
           }),
         ]
       : []),
@@ -143,6 +158,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (existing.companyId) {
             const company = await getCompanyRepository().findById(existing.companyId);
             plan = company?.plan ?? null;
+            if (company) {
+              await setTenantCache(company);
+            }
+          }
+
+          if (!existing.emailVerified) {
+            await userRepo.update(existing.id, { emailVerified: true });
           }
 
           const sessionId = await createDbSession(existing.id);

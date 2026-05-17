@@ -89,7 +89,6 @@ async function getLastLoginMap(
   const map = new Map<string, Date>();
   if (userIds.length === 0) return map;
 
-  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const { logs } = await getAuditRepository().list({
     companyId,
     action: AUDIT_ACTIONS.LOGIN_SUCCESS,
@@ -106,7 +105,6 @@ async function getLastLoginMap(
     }
   }
 
-  void oneDayAgo;
   return map;
 }
 

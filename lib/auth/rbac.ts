@@ -23,6 +23,14 @@ function hasPermission(user: SessionUser, key: PermissionKey): boolean {
   return PERMISSIONS[user.role].includes(key);
 }
 
+const TENANT_SCOPED_RESOURCES = new Set<string>([
+  "users",
+  "companies",
+  "audit_logs",
+  "billing",
+  "roles",
+]);
+
 /**
  * Returns true if the user may perform `action` on `resource`.
  * Superadmin always passes. Company admins are scoped to their own company when context is provided.
@@ -51,10 +59,7 @@ export function checkPermission(
       return context.targetCompanyId === user.companyId;
     }
     if (
-      (resource === "users" ||
-        resource === "audit_logs" ||
-        resource === "billing" ||
-        resource === "roles") &&
+      TENANT_SCOPED_RESOURCES.has(resource) &&
       context.targetCompanyId !== undefined &&
       context.targetCompanyId !== null
     ) {
@@ -73,6 +78,19 @@ export function checkPermission(
     }
     if (resource === "workspace") {
       return Boolean(user.companyId);
+    }
+  }
+
+  if (
+    user.role === ROLES.USER &&
+    TENANT_SCOPED_RESOURCES.has(resource) &&
+    (action === "read" || action === "update" || action === "delete")
+  ) {
+    if (
+      (context.targetCompanyId === undefined || context.targetCompanyId === null) &&
+      context.targetUserId === undefined
+    ) {
+      return false;
     }
   }
 
